@@ -7,22 +7,28 @@ function App() {
   const [summary, setSummary] = useState("")
 
   const getFullPrompt = () => {
-    return `
-Making a cup of tea is easy! First, you need to get some \ 
-water boiling. While that's happening, \ 
-grab a cup and put a tea bag in it. Once the water is \ 
-hot enough, just pour it over the tea bag. \ 
-Let it sit for a bit so the tea can steep. After a \ 
-few minutes, take out the tea bag. If you \ 
-like, you can add some sugar or milk to taste. \ 
-And that's it! You've got yourself a delicious \ 
-cup of tea to enjoy.
-`;
+    return prompt;
   }
 
   const getCompletion = async () => {
     const response = await fetch(
       "http://127.0.0.1:3000/api/v1/get_completion",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ prompt: getFullPrompt(prompt) })
+      }
+    )
+
+    const data = await response.json()
+    setSummary(data.summary)
+  }
+
+  const handleInferring = async () => {
+    const response = await fetch(
+      "http://127.0.0.1:3000/api/v1/inferring",
       {
         method: "POST",
         headers: {
@@ -44,7 +50,8 @@ cup of tea to enjoy.
         </div>
 
         <div className="mb-3">
-          <button className="btn btn-primary" onClick={getCompletion}>Send</button>
+          <button className="btn btn-primary me-2" onClick={getCompletion}>Send</button>
+          <button className="btn btn-primary" onClick={handleInferring}>Inferring</button>
         </div>
 
         <div>
