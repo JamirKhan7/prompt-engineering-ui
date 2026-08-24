@@ -1,5 +1,6 @@
 import { useState } from "react"
 import ReactMarkdown from "react-markdown"
+import { completion, inferring, expanding } from './apis';
 
 function App() {
 
@@ -10,36 +11,23 @@ function App() {
     return prompt;
   }
 
-  const getCompletion = async () => {
-    const response = await fetch(
-      "http://127.0.0.1:3000/api/v1/get_completion",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ prompt: getFullPrompt(prompt) })
-      }
-    )
-
-    const data = await response.json()
-    setSummary(data.summary)
+  const handleCompletion = async () => {
+    const summary = await completion(getFullPrompt(prompt))
+    setSummary(summary)
   }
 
   const handleInferring = async () => {
-    const response = await fetch(
-      "http://127.0.0.1:3000/api/v1/inferring",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ prompt: getFullPrompt(prompt) })
-      }
-    )
+    const summary = await inferring(getFullPrompt(prompt))
+    setSummary(summary)
+  }
 
-    const data = await response.json()
-    setSummary(data.summary)
+  const handleExpanding = async () => {
+    const options = {
+      sentiment: "negative",
+      prompt: getFullPrompt(prompt)
+    }
+    const summary = await expanding(options)
+    setSummary(summary)
   }
 
   return (
@@ -50,12 +38,13 @@ function App() {
         </div>
 
         <div className="mb-3">
-          <button className="btn btn-primary me-2" onClick={getCompletion}>Send</button>
-          <button className="btn btn-primary" onClick={handleInferring}>Inferring</button>
+          <button className="btn btn-primary me-2" onClick={handleCompletion}>Send</button>
+          <button className="btn btn-primary me-2" onClick={handleInferring}>Inferring</button>
+          <button className="btn btn-primary me-2" onClick={handleExpanding}>Expanding</button>
         </div>
 
         <div>
-          <pre>{summary}</pre>
+          <pre className="summary">{summary}</pre>
         </div>
       </div>
     </div>
