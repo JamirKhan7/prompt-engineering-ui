@@ -1,96 +1,112 @@
-import { useState } from "react";
-import "./pizza_bot.scss"
+import { useState, useEffect, useRef } from 'react';
+import './pizza_bot.scss';
+import {
+  pizzaChatMessage,
+  createConversation,
+  getConversations,
+  deleteConversation,
+  getConversationMessages,
+} from './apis';
+import Messages from './Messages';
+import Composer from './Composer';
+import Sidebar from './Sidebar';
 
-export default function() {
-  const [messages, setMessages] = useState([  ]);
-  const [input, setInput] = useState("");
+export default function () {
+  const [conversations, setConversations] = useState([]);
+  const [conversationId, setConversationId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const initializationStarted = useRef(false);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (initializationStarted.current) return;
 
-    if (!input.trim()) return;
+    initializationStarted.current = true;
 
-    const userMessage = {
-      id: Date.now(),
-      role: "user",
-      content: input.trim()
-    }
+    loadConversations();
+  }, []);
 
-    setMessages(prev => [...prev, userMessage]);
-    setInput("");
+  const loadConversations = async () => {
+    const data = await getConversations();
 
-    // send an api request...
+    setConversations(data);
   };
 
-  return(
-    <div class="pizza-chat d-flex flex-column">
-      <main className="pizza-chat__messages flex-grow-1 overflow-auto">
-        <div className="pizza-chat__messages-inner container">
-          {
-            messages.map(message => (
-              <div
-                key={message.id}
-                className={`message d-flex mb-4 ${
-                  message.role === 'user'
-                  ? 'justify-content-end'
-                  : 'justify-content-start'
-                }`}
-              >
-                {message.role === 'assistant' && (
-                  <div className="message__avatar me-3 flex-shrink-0">
-                    🍕
-                  </div>
-                )}
+  const addConversation = async () => {
+    const id = await createConversation();
 
-                <div
-                className={`message__content ${
-                  message.role === 'user'
-                  ? 'message__content--user'
-                  : 'message__content--assistant'
-                }`}>
-                  {message.content}
-                </div>
-              </div>
-            ))
-          }
-        </div>
-      </main>
+    debugger;
 
-      <footer className="pizza-chat__footer bg-white">
-        <div className="pizza-chat__composer container">
-          <form onSubmit={handleSubmit}>
-            <div className="composer border rounded-4 shadow-sm">
-              <textarea
-              className="composer__input form-control border-0 shadow-none"
-              rows="1"
-              value={input}
-              placeholder="Ask PizzaBot anything..."
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit(e);
-                }
-              }}
-              />
+    id && setConversationId(id);
+    setMessages([]);
+  };
 
-              <div className="composer__actions d-flex justify-content-end">
-                <button
-                  type="submit"
-                  disabled={!input.trim()}
-                  className="composer__send btn rounded-circle"
-                >
-                  ↑
-                </button>
-              </div>
-            </div>
-          </form>
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-          <div className="pizza-chat__disclaimer text-center text-muted">
-            PizzaBot can make mistakes. Check important information.
-          </div>
-        </div>
-      </footer>
+    const message = input.trim();
+
+    if (!message || !conversationId) return;
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        role: 'user',
+        content: message,
+      },
+    ]);
+    setInput('');
+
+    const assistantMessage = await pizzaChatMessage({
+      message,
+      conversationId,
+    });
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        role: 'assistant',
+        content: assistantMessage,
+      },
+    ]);
+  };
+
+  const handleDeleteConversation = async (conversationId) => {
+    await deleteConversation(conversationId);
+
+    setConversations((prev) =>
+      prev.filter((conversation) => conversation.id !== conversationId)
+    );
+
+    setConversationId(null);
+  };
+
+  const loadConversation = async (id) => {
+    const messages = await getConversationMessages(id);
+
+    setConversationId(id);
+    setMessages(messages);
+  };
+
+  return (
+    <div className="pizza-chat d-flex">
+      <Sidebar
+        activeConversationId={conversationId}
+        conversations={conversations}
+        onDeleteConversation={handleDeleteConversation}
+        onSelectConversation={loadConversation}
+        onNewChat={addConversation}
+      />
+      <div className="pizza-chat__content d-flex flex-column">
+        <Messages messages={messages} />
+        <Composer
+          handleSubmit={handleSubmit}
+          setInput={setInput}
+          input={input}
+        />
+      </div>
     </div>
   );
 }
